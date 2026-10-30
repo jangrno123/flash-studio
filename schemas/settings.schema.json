@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "settings.schema.json",
+  "title": "Flash Studio 설정 (data/settings.json)",
+  "type": "object",
+  "required": [
+    "version",
+    "activeProviderId",
+    "activeModel",
+    "providers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1
+    },
+    "activeProviderId": {
+      "type": "string",
+      "minLength": 1,
+      "default": "deepseek"
+    },
+    "activeModel": {
+      "type": "string",
+      "minLength": 1,
+      "default": "deepseek-flash"
+    },
+    "providers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "provider.schema.json"
+      }
+    },
+    "systemPrompt": {
+      "type": "string",
+      "maxLength": 50000,
+      "default": ""
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "temperature": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 2,
+          "default": null
+        },
+        "maxTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 1000000,
+          "default": null
+        },
+        "thinking": {
+          "type": "boolean",
+          "default": false
+        },
+        "resendReasoningInToolLoop": {
+          "type": "boolean",
+          "default": true
+        },
+        "autoTitle": {
+          "type": "boolean",
+          "default": true
+        },
+        "autoCompact": {
+          "type": "boolean",
+          "default": true,
+          "description": "대화가 예산을 넘으면 오래된 턴을 자동으로 요약해 정리"
+        },
+        "compactAtPercent": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 99,
+          "default": 99,
+          "description": "모델 컨텍스트 창의 이 비율(%)에 닿으면 자동 정리"
+        },
+        "compactAtTokens": {
+          "type": "integer",
+          "minimum": 10000,
+          "maximum": 1048576,
+          "default": 1000000,
+          "description": "대화 정리용 요청 토큰 예산. 모델 컨텍스트 비율과 이 값 중 먼저 닿는 쪽에서 정리하며 분당 TPM 제한과는 별개"
+        },
+        "compactKeepTurns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 8,
+          "description": "정리할 때 원문으로 남길 최근 사용자 턴 수"
+        },
+        "autoHandoff": {
+          "type": "boolean",
+          "default": true,
+          "description": "원문 누적 전환 기준에 닿으면 인계서를 대조 저장하고 새 대화로 전환·자동 재개"
+        },
+        "handoffAtTokens": {
+          "type": "integer", "minimum": 100000, "maximum": 20000000, "default": 3000000,
+          "description": "원문 누적 토큰 추정 기준. 공급자 반복 입력 과금 합계나 한 번의 요청 크기와 별개"
+        }
+      }
+    },
+    "imageGen": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "providerId": {
+          "type": "string",
+          "default": "modelark"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "default": "seedream-5-0-260128"
+        },
+        "size": {
+          "type": "string",
+          "minLength": 1,
+          "default": "2K"
+        },
+        "watermark": {
+          "type": "boolean",
+          "default": false
+        },
+        "extraBody": {
+          "type": "object",
+          "default": {}
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "approval": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "auto"
+          ],
+          "default": "ask"
+        },
+        "enableFetch": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableWorkspace": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableShell": {
+          "type": "boolean",
+          "default": false
+        },
+        "maxRounds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 12
+        },
+        "resultLimit": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 500000,
+          "default": 20000
+        },
+        "allowedDirs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "enableWeb": {
+          "type": "boolean",
+          "default": true,
+          "description": "웹 검색·다운로드·HTTP 요청"
+        },
+        "enableBrowser": {
+          "type": "boolean",
+          "default": true,
+          "description": "작업 브라우저 조작 (오른쪽 패널에 화면 표시)"
+        },
+        "enableCode": {
+          "type": "boolean",
+          "default": true,
+          "description": "자바스크립트 계산 실행"
+        },
+        "enableMemory": {
+          "type": "boolean",
+          "default": true,
+          "description": "대화를 넘어 유지되는 메모리"
+        },
+        "mcpDirectLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300,
+          "default": 60,
+          "description": "모델에 직접 넘길 MCP 도구 최대 수. 넘치면 큰 서버는 mcp_tools/mcp_call 로 쓴다"
+        },
+        "mcpPinned": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "bao-local-files",
+            "bao-production"
+          ],
+          "description": "항상 직접 넘길 MCP 서버"
+        },
+        "askTimeoutSec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 20,
+          "description": "ask_user 질문에 이 시간 안에 답이 없으면 권장안으로 진행 (중대 결정은 기다림)"
+        },
+        "enableQueue": {
+          "type": "boolean",
+          "default": true,
+          "description": "모델이 작업 대기열에 작업을 등록·조회 (queue_add, queue_status)"
+        },
+        "allowProjectEdits": {
+          "type": "boolean",
+          "default": false,
+          "description": "모델이 외부(BAO 등) 프로젝트의 이름·설정 변경이나 프로젝트·캔버스·에셋 삭제를 실행하도록 허용"
+        }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "extraDirs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "disabled": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "불러오지 않을 스킬 이름"
+        },
+        "maxCatalog": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500,
+          "default": 80
+        }
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": [
+            "system",
+            "light",
+            "dark"
+          ],
+          "default": "system"
+        },
+        "fontSize": {
+          "type": "string",
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "default": "medium"
+        },
+        "responseFont": {
+          "type": "string",
+          "enum": [
+            "sans",
+            "serif"
+          ],
+          "default": "sans"
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "default": 17860
+        },
+        "idleExitSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 86400,
+          "default": 300
+        }
+      }
+    },
+    "qa": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "description": "이미지 변환 검수 (원본 대조). 이미지를 읽을 수 있는 모델을 쓴다",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "providerId": {
+          "type": "string",
+          "default": "modelark"
+        },
+        "model": {
+          "type": "string",
+          "default": "seed-2-0-lite-260428",
+          "description": "검수 모델 (이미지 입력 가능한 모델)"
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3,
+          "description": "컷당 최대 생성 횟수 (처음 1회 + 재생성)"
+        },
+        "passScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 85,
+          "description": "이 점수 이상이고 심각한 문제가 없으면 합격"
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "default": 3,
+          "description": "동시에 처리할 컷 수"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api-request.schema.json",
+  "title": "공급자 API 요청 기록 한 줄 (data/logs/api-requests.jsonl)",
+  "type": "object",
+  "required": [
+    "time",
+    "kind",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "time": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "chat",
+        "image",
+        "title",
+        "test",
+        "models",
+        "complete",
+        "compact",
+        "handoff",
+        "qa"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "app",
+        "mcp"
+      ]
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "error",
+        "aborted"
+      ]
+    },
+    "httpStatus": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "requestId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "공급자 request id (응답 헤더 x-request-id)"
+    },
+    "error": {
+      "type": "string"
+    },
+    "usage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "durationMs": {
+      "type": "integer"
+    },
+    "conversationId": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    }
+  }
+}

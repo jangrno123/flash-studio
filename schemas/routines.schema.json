@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "routines.schema.json",
+  "title": "루틴 (data/routines.json) — 정해진 시각에 프롬프트를 자동 실행한다",
+  "type": "object",
+  "required": [
+    "version",
+    "routines"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1
+    },
+    "routines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/routine"
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "schedule": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "daily",
+            "weekdays",
+            "weekly",
+            "interval",
+            "once"
+          ]
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "default": "09:00",
+          "description": "daily/weekdays/weekly 실행 시각 (로컬)"
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6
+          },
+          "default": [
+            1
+          ],
+          "description": "weekly 요일 (0=일요일)"
+        },
+        "everyMinutes": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 10080,
+          "default": 60
+        },
+        "at": {
+          "type": "string",
+          "default": "",
+          "description": "once 실행 시각 (ISO)"
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "at",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error",
+            "skipped"
+          ]
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "error": {
+          "type": "string",
+          "default": ""
+        },
+        "trigger": {
+          "enum": [
+            "schedule",
+            "manual",
+            "catchup"
+          ],
+          "default": "schedule"
+        },
+        "durationMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "routine": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "prompt",
+        "schedule"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{6,64}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "projectId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "default": []
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "target": {
+          "enum": [
+            "new",
+            "same",
+            "queue"
+          ],
+          "default": "new",
+          "description": "new=실행마다 새 대화, same=한 대화에 이어서, queue=대기열에 작업으로 등록"
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "target=same 일 때 이어 쓰는 대화"
+        },
+        "providerId": {
+          "type": "string",
+          "default": ""
+        },
+        "model": {
+          "type": "string",
+          "default": ""
+        },
+        "catchUp": {
+          "type": "boolean",
+          "default": true,
+          "description": "앱이 꺼져 있어 놓친 실행을 켜질 때 한 번 실행"
+        },
+        "nextRunAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "lastRunAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "lastStatus": {
+          "enum": [
+            "",
+            "ok",
+            "error",
+            "running",
+            "skipped"
+          ],
+          "default": ""
+        },
+        "lastError": {
+          "type": "string",
+          "default": ""
+        },
+        "lastConversationId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/run"
+          },
+          "default": [],
+          "maxItems": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "default": ""
+        },
+        "updatedAt": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  }
+}

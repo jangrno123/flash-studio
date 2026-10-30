@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mcp.schema.json",
+  "title": "MCP 서버 설정 (data/mcp.json) — Claude Desktop 의 mcpServers 형식과 호환",
+  "type": "object",
+  "required": [
+    "mcpServers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "mcpServers": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_.-]{1,40}$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/stdio"
+          },
+          {
+            "$ref": "#/$defs/remote"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "stdio": {
+      "type": "object",
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "stdio"
+          ]
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "autoApprove": {
+          "type": "boolean"
+        },
+        "alwaysAllow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000
+        },
+        "initTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "description": "처음 연결(initialize) 대기 시간. OAuth 로그인이 필요한 서버는 길게"
+        }
+      }
+    },
+    "remote": {
+      "type": "object",
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "http",
+            "streamable-http",
+            "sse"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "autoApprove": {
+          "type": "boolean"
+        },
+        "alwaysAllow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000
+        },
+        "initTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "description": "처음 연결(initialize) 대기 시간. OAuth 로그인이 필요한 서버는 길게"
+        }
+      }
+    }
+  }
+}

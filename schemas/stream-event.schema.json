@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stream-event.schema.json",
+  "title": "POST /api/chat 응답 스트림(SSE, data: <json>) 이벤트",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "runId",
+        "userMessage",
+        "assistantMessage"
+      ],
+      "properties": {
+        "type": {
+          "const": "start"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "userMessage": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "assistantMessage": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "delta"
+      ],
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "delta": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "delta"
+      ],
+      "properties": {
+        "type": {
+          "const": "reasoning"
+        },
+        "delta": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "part"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool_call"
+        },
+        "part": {
+          "$ref": "conversation.schema.json#/$defs/part"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "id",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool_status"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        },
+        "isError": {
+          "type": "boolean"
+        },
+        "durationMs": {
+          "type": "integer"
+        },
+        "deadline": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "awaiting_answer 일 때 자동 선택 시각(ms). null 이면 답을 기다린다"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "part"
+      ],
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "part": {
+          "$ref": "conversation.schema.json#/$defs/part"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "usage"
+      ],
+      "properties": {
+        "type": {
+          "const": "usage"
+        },
+        "usage": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "message"
+      ],
+      "properties": {
+        "type": {
+          "const": "error"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "message"
+      ],
+      "properties": {
+        "type": {
+          "const": "done"
+        },
+        "message": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "title"
+      ],
+      "properties": {
+        "type": {
+          "const": "title"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "requestId"
+      ],
+      "properties": {
+        "type": {
+          "const": "request"
+        },
+        "requestId": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "compacting"
+        },
+        "messages": {
+          "type": "integer"
+        },
+        "tokens": {
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "compaction"
+      ],
+      "properties": {
+        "type": {
+          "const": "compacted"
+        },
+        "compaction": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "context"
+      ],
+      "properties": {
+        "type": {
+          "const": "context"
+        },
+        "context": {
+          "type": "object",
+          "required": [
+            "tokens",
+            "threshold"
+          ],
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "enum": [
+                "measured",
+                "estimated"
+              ]
+            },
+            "window": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "threshold": {
+              "type": "integer"
+            },
+            "limitBy": {
+              "enum": [
+                "percent",
+                "cap"
+              ]
+            },
+            "autoCompact": {
+              "type": "boolean"
+            },
+            "compacted": {
+              "type": "boolean"
+            },
+            "handoffAdvice": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "handedOffTo": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "wait"
+      ],
+      "properties": {
+        "type": {
+          "const": "retry"
+        },
+        "wait": {
+          "type": "integer"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "max": {
+          "type": "integer"
+        },
+        "reason": {
+          "enum": ["limit", "network", "server"]
+        },
+        "requestId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "parts"
+      ],
+      "properties": {
+        "type": {
+          "const": "reset"
+        },
+        "parts": {
+          "type": "array"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "part"
+      ],
+      "properties": {
+        "type": {
+          "const": "steer"
+        },
+        "part": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "texts"
+      ],
+      "properties": {
+        "type": {
+          "const": "steer_dropped"
+        },
+        "texts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "handoff_start"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "conversation"
+      ],
+      "properties": {
+        "type": {
+          "const": "handoff"
+        },
+        "conversation": {
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "message"
+      ],
+      "properties": {
+        "type": {
+          "const": "handoff_failed"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "handoff_prepare"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "conversation"
+      ],
+      "properties": {
+        "type": {
+          "const": "handoff_ready"
+        },
+        "conversation": {
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

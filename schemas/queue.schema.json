@@ -1,0 +1,402 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "queue.schema.json",
+  "title": "작업 대기열 (data/queue.json) — 등록된 작업을 순서대로 무인 처리한다 (CONTEXT.md §13)",
+  "type": "object",
+  "required": [
+    "version",
+    "settings",
+    "jobs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "default": 1
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "allowModelRegistration": {
+          "type": "boolean",
+          "default": false,
+          "description": "사용자 화면에서 명시적으로 허용한 경우에만 모델이 새 대기열을 등록한다. 현재 대화 작업 승인은 자동 분할·채팅방 생성 승인이 아니다."
+        },
+        "running": {
+          "type": "boolean",
+          "default": true,
+          "description": "false 면 새 작업을 꺼내지 않는다 (진행 중인 작업은 끝까지)"
+        },
+        "autoContinueMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 20,
+          "description": "호출 한도에 닿았을 때 자동으로 이어가는 최대 횟수 (작업당)"
+        },
+        "autoHandoff": {
+          "type": "boolean",
+          "default": true,
+          "description": "컨텍스트가 무거워지면 인계서를 만들어 새 대화로 옮겨 계속한다"
+        },
+        "handoffAtRatio": {
+          "type": "number",
+          "minimum": 0.3,
+          "maximum": 1,
+          "default": 1,
+          "description": "이전 설정 호환용. 실제 인계는 공통 원문 누적 기준(기본300만 토큰)을 사용"
+        },
+        "retryMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        },
+        "retryDelaySec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 3600,
+          "default": 60,
+          "description": "오류 뒤 재시도 대기. 시도마다 배로 늘어난다"
+        },
+        "pauseBetweenSec": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600,
+          "default": 5,
+          "description": "작업과 작업 사이 쉬는 시간"
+        },
+        "alwaysOn": {
+          "type": "boolean",
+          "default": false,
+          "description": "24시간 상시 가동: 창을 닫거나 작업이 없어도 서버를 끄지 않는다 (새 작업을 언제든 받는다)"
+        },
+        "keepAwake": {
+          "type": "boolean",
+          "default": true,
+          "description": "대기·진행 중인 작업이 있는 동안 PC 절전을 막는다"
+        }
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/job"
+      },
+      "default": []
+    },
+    "presets": {
+      "type": "array",
+      "default": [],
+      "maxItems": 100,
+      "description": "작업 등록 프리셋 (사용자 저장분). 기본 프리셋은 앱에 들어 있다",
+      "items": {
+        "$ref": "#/$defs/preset"
+      }
+    }
+  },
+  "$defs": {
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "description": "등록할 때 미리 받는 유료 작업 승인. 실행 중에는 묻지 않는다",
+      "properties": {
+        "images": {
+          "type": "boolean",
+          "default": false,
+          "description": "이미지 생성(generate_image 등)"
+        },
+        "video": {
+          "type": "boolean",
+          "default": false,
+          "description": "영상 렌더(canvas.generate 등)"
+        },
+        "other": {
+          "type": "boolean",
+          "default": false,
+          "description": "그 밖의 유료 생성 MCP (음성·음악 등)"
+        },
+        "maxPaidCalls": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "default": null,
+          "description": "유료 호출 최대 횟수. null 이면 제한 없음 (승인한 종류 안에서)"
+        },
+        "budgetNote": {
+          "type": "string",
+          "maxLength": 500,
+          "default": "",
+          "description": "예산 메모 (예: 영상 $5 이내). 모델에게 그대로 전달된다"
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "prompt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceConversationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+        "sourceMessageId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+        "submissionKey": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sourceContextRef": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}\\.queue-source\\.json$" },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{6,64}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40000
+        },
+        "projectId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "default": []
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "default": 0,
+          "description": "클수록 먼저"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "이 작업들이 done 이어야 시작"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "paused",
+            "blocked",
+            "done",
+            "failed",
+            "canceled"
+          ],
+          "default": "queued"
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        },
+        "paidCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "conversationId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "지금 이어 쓰는 대화 (인계되면 바뀐다)"
+        },
+        "conversations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "checkpoint": {
+          "type": "string",
+          "maxLength": 8000,
+          "default": "",
+          "description": "모델이 queue_checkpoint 로 남긴 재개 지점"
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 20000,
+          "default": ""
+        },
+        "blockedReason": {
+          "type": "string",
+          "maxLength": 4000,
+          "default": ""
+        },
+        "lastError": {
+          "type": "string",
+          "maxLength": 4000,
+          "default": ""
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "continues": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "handoffs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "source": {
+          "enum": [
+            "user",
+            "model",
+            "routine"
+          ],
+          "default": "user"
+        },
+        "batchId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "createdAt": {
+          "type": "string",
+          "default": ""
+        },
+        "startedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "updatedAt": {
+          "type": "string",
+          "default": ""
+        },
+        "attachments": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "attachment.schema.json"
+          },
+          "default": [],
+          "description": "작업에 붙인 파일(웹툰 원본 등). 첫 메시지에 첨부되고, 경로는 매 요청 무인 작업 지침에 실린다"
+        },
+        "sortKey": {
+          "type": "number",
+          "default": 0,
+          "description": "같은 우선순위 안의 순서 (작을수록 먼저). 0 이면 등록 시각 순"
+        },
+        "editNote": {
+          "type": "string",
+          "maxLength": 20000,
+          "default": "",
+          "description": "시작한 뒤 수정된 내용 — 다음 단계 메시지에 붙여 모델에게 알린다"
+        }
+      }
+    },
+    "preset": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{6,64}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "kind": {
+          "enum": [
+            "webtoon",
+            "custom"
+          ],
+          "default": "custom",
+          "description": "webtoon 이면 구조화된 입력 칸(레이아웃·범위 등)으로 지시서를 만든다"
+        },
+        "form": {
+          "type": "object",
+          "default": {},
+          "description": "webtoon 프리셋의 입력 칸 값"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160,
+          "default": ""
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 40000,
+          "default": ""
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "default": []
+        },
+        "projectId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "default": 0
+        },
+        "sequential": {
+          "type": "boolean",
+          "default": false
+        },
+        "createdAt": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  }
+}

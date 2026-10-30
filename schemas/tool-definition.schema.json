@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tool-definition.schema.json",
+  "title": "LLM에 전달되는 함수 도구 정의 (OpenAI tools 형식)",
+  "type": "object",
+  "required": ["type", "function"],
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "function" },
+    "function": {
+      "type": "object",
+      "required": ["name", "parameters"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$" },
+        "description": { "type": "string", "maxLength": 8000 },
+        "parameters": { "type": "object" }
+      }
+    }
+  }
+}

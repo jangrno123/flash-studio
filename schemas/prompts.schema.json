@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prompts.schema.json",
+  "title": "프롬프트 라이브러리 (data/prompts.json)",
+  "type": "object",
+  "required": ["version", "prompts"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1, "default": 1 },
+    "prompts": { "type": "array", "items": { "$ref": "#/$defs/prompt" }, "default": [] }
+  },
+  "$defs": {
+    "prompt": {
+      "type": "object",
+      "required": ["id", "title", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000, "default": "" },
+        "content": { "type": "string", "minLength": 1, "maxLength": 100000, "description": "{{변수}} 또는 {{변수:기본값}} 자리표시자 사용 가능" },
+        "tags": { "type": "array", "items": { "type": "string", "maxLength": 40 }, "default": [] },
+        "createdAt": { "type": "string", "default": "" },
+        "updatedAt": { "type": "string", "default": "" }
+      }
+    }
+  }
+}

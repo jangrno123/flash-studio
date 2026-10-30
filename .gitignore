@@ -1,0 +1,15 @@
+# Per-user content and credentials must never be committed.
+/data/
+/backups/
+/runtime/
+/dist/
+/node_modules/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.zip
+*.7z
+.DS_Store
+Thumbs.db

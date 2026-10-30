@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "attachment.schema.json",
+  "title": "첨부 파일 (data/uploads 에 저장됨)",
+  "type": "object",
+  "required": ["id", "name", "mime", "size", "kind", "file"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "mime": { "type": "string", "maxLength": 120 },
+    "size": { "type": "integer", "minimum": 0 },
+    "kind": { "type": "string", "enum": ["image", "text", "file"] },
+    "file": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "data/uploads 안의 저장 파일명" },
+    "url": { "type": "string", "pattern": "^/files/uploads/" }
+  }
+}

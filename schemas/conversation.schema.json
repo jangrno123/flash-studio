@@ -1,0 +1,659 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "conversation.schema.json",
+  "title": "대화 (data/conversations/<id>.json)",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "createdAt",
+    "updatedAt",
+    "messages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{6,64}$"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "providerId": {
+      "type": "string",
+      "default": ""
+    },
+    "model": {
+      "type": "string",
+      "default": ""
+    },
+    "systemPrompt": {
+      "type": "string",
+      "maxLength": 50000,
+      "default": ""
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "대화 전체에 적용되는 스킬 이름"
+    },
+    "pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    },
+    "compaction": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "default": null,
+      "description": "컨텍스트 정리: upToMessageId 까지는 모델에게 요약으로만 보낸다 (CONTEXT.md §5)",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60000
+        },
+        "upToMessageId": {
+          "type": "string"
+        },
+        "summarizedCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tokensBefore": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokensAfter": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "sourceLedger": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "정리한 횟수"
+        }
+      },
+      "required": [
+        "summary",
+        "upToMessageId",
+        "summarizedCount",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "handoff": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "default": null,
+      "description": "이전 대화에서 넘겨받은 인계서 (CONTEXT.md §9). 있으면 시스템 프롬프트 L2 에 실린다",
+      "required": [
+        "fromConversationId",
+        "fromTitle",
+        "summary",
+        "createdAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fromConversationId": {
+          "type": "string"
+        },
+        "fromTitle": {
+          "type": "string"
+        },
+        "sourceLedger": {
+          "type": "string"
+        },
+        "sourceMessageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "userInstructionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resumeState": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "running",
+            "done",
+            "error",
+            "stopped"
+          ]
+        },
+        "autoResume": { "type": "boolean", "default": false },
+        "resumeMessageId": { "type": "string" },
+        "resumeOptions": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "tools": { "type": "boolean" },
+            "thinking": { "type": "boolean" },
+            "providerId": { "type": "string" },
+            "model": { "type": "string" }
+          }
+        },
+        "recoveryCount": { "type": "integer", "minimum": 0 },
+        "sourceSummaryHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sourceSnapshots": {
+          "type": "array", "maxItems": 200,
+          "items": { "type": "object", "additionalProperties": false,
+            "required": ["conversationId", "messageCount", "sha256"],
+            "properties": {
+              "conversationId": { "type": "string" },
+              "messageCount": { "type": "integer", "minimum": 0 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            }
+          }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80000
+        },
+        "files": {
+          "type": "array",
+          "default": [],
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "ref"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "ref": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            }
+          }
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "몇 번째 이어진 대화인지"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      }
+    },
+    "handedOffTo": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "이 대화를 이어받은 새 대화 id"
+    },
+    "projectId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "속한 프로젝트 (CONTEXT.md §10)"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "보관함. 목록·검색·컨텍스트 어디에도 싣지 않는다"
+    },
+    "routineId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "루틴이 만든 대화면 그 루틴 id"
+    },
+    "queueJobId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "대기열 작업이 만든 대화면 그 작업 id (인계돼도 이어진다)"
+    },
+    "bgWaits": {
+      "type": "array",
+      "default": [],
+      "description": "백그라운드 확인 (CONTEXT.md §15, lib/bgwait.js). 서버가 다시 켜져도 이어서 돈다",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "key",
+          "tool",
+          "label",
+          "startedAt",
+          "deadline"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "object"
+          },
+          "field": {
+            "type": "string"
+          },
+          "until": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "contains": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "interval": {
+            "type": "number"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer"
+          },
+          "lastValue": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "bgNotes": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "description": "실행 중이 아니라 아직 전하지 못한 백그라운드 확인 결과. 다음 실행 첫 단계에 실린다"
+    },
+    "watch": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "default": null,
+      "description": "자동 점검 (CONTEXT.md §14, lib/watch.js)",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "intervalMin": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 240
+        },
+        "state": {
+          "enum": [
+            "watching",
+            "running",
+            "busy",
+            "idle",
+            "paused",
+            "done",
+            "off"
+          ]
+        },
+        "nextCheckAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastCheckAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seen": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "이 메시지까지 보고 대기·멈춤으로 판단했다. 새 메시지가 오면 다시 판단"
+        },
+        "note": {
+          "type": "string"
+        },
+        "failStreak": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "continues": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "required": [
+        "id",
+        "role",
+        "createdAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{6,64}$"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "user",
+            "assistant"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "default": ""
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "attachment.schema.json"
+          },
+          "default": []
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/part"
+          },
+          "default": []
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "streaming",
+            "complete",
+            "stopped",
+            "error"
+          ],
+          "default": "complete"
+        },
+        "error": {
+          "type": "string",
+          "default": ""
+        },
+        "model": {
+          "type": "string",
+          "default": ""
+        },
+        "usage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null
+        },
+        "usageContextBoundary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "마지막 공급자 usage를 측정한 요청의 요약 경계 메시지 ID. 경계가 다르면 과거 사용량을 현재 컨텍스트 크기로 재사용하지 않음"
+        },
+        "contextPeakTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durationMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "requestIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "이 응답을 만드는 동안 공급자가 돌려준 request id (x-request-id)"
+        },
+        "stopReason": {
+          "type": "string",
+          "enum": [
+            "",
+            "max_rounds",
+            "context_handoff"
+          ],
+          "default": "",
+          "description": "응답이 멈춘 이유. max_rounds 면 호출 한도에 닿아 보고로 끝난 것 (이어서 계속 가능)"
+        }
+      }
+    },
+    "part": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "reasoning"
+            },
+            "text": {
+              "type": "string"
+            },
+            "durationMs": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "id",
+            "name",
+            "arguments",
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "tool_call"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "arguments": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "awaiting_approval",
+                "awaiting_answer",
+                "running",
+                "done",
+                "error",
+                "denied"
+              ]
+            },
+            "result": {
+              "type": "string"
+            },
+            "isError": {
+              "type": "boolean"
+            },
+            "durationMs": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "requestId": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "url"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "url": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "requestId": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "text"
+          ],
+          "additionalProperties": false,
+          "description": "응답 도중 사용자가 보낸 추가 지시 (스티어링). 모델에게는 그 시점의 user 메시지로 전달된다",
+          "properties": {
+            "type": {
+              "const": "steer"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "attachments": {
+              "type": "array",
+              "maxItems": 30,
+              "items": {
+                "$ref": "attachment.schema.json"
+              }
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "applied"
+              ]
+            },
+            "immediate": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

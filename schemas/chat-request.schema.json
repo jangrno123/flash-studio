@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "chat-request.schema.json",
+  "title": "POST /api/chat 요청 본문",
+  "type": "object",
+  "required": ["conversationId"],
+  "additionalProperties": false,
+  "properties": {
+    "conversationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+    "content": { "type": "string", "maxLength": 1000000, "default": "" },
+    "attachments": { "type": "array", "maxItems": 30, "items": { "$ref": "attachment.schema.json" }, "default": [] },
+    "skills": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "regenerate": { "type": "boolean", "default": false },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "providerId": { "type": "string" },
+        "model": { "type": "string" },
+        "thinking": { "type": "boolean" },
+        "imageMode": { "type": "boolean", "default": false },
+        "tools": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

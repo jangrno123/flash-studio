@@ -1,0 +1,118 @@
+{
+  "$id": "decisions.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "items"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "conversationId",
+          "messageId",
+          "callId",
+          "projectId",
+          "title",
+          "question",
+          "createdAt",
+          "answer",
+          "answeredAt",
+          "recommended",
+          "status",
+          "options",
+          "blockedTasks",
+          "independentTasks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "callId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "answeredAt": {
+            "type": "string"
+          },
+          "recommended": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "answered"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "description"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "blockedTasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "independentTasks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
