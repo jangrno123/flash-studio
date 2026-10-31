@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"media-inspection.schema.json",
+  "$defs":{
+    "image":{"type":"object","additionalProperties":false,"properties":{"image":{"type":"string"},"reference":{"type":"string"},"focus":{"type":"string","maxLength":3000}}},
+    "video":{"type":"object","additionalProperties":false,"properties":{"video":{"type":"string"},"reference":{"type":"string"},"focus":{"type":"string","maxLength":3000},"start_seconds":{"type":"number","minimum":0},"end_seconds":{"type":"number","minimum":0},"frames":{"type":"integer","minimum":2,"maximum":8},"timestamps":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"number","minimum":0}}}}
+  }
+}

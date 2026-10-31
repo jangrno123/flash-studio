@@ -13,3 +13,7 @@
 *.7z
 .DS_Store
 Thumbs.db
+__pycache__/
+*.pyc
+/integrations/minimax-h3/profile.json
+/integrations/minimax-h3/runtime-snapshot-*.json

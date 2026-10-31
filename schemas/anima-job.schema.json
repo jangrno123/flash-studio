@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "anima-job.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "fingerprint",
+    "kind",
+    "status",
+    "prompt",
+    "createdAt",
+    "updatedAt",
+    "references",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^anima_[a-f0-9]{24}$"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "image"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "canceled"
+      ]
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "aspectRatio": {
+      "type": "string"
+    },
+    "resolution": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "references": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "string"
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "finishedAt": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "authMethod": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "url",
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "model": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nativeJobId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

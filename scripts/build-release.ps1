@@ -9,8 +9,19 @@ $work = Join-Path $dist ('build-' + [Guid]::NewGuid().ToString('N'))
 $package = Join-Path $work 'Flash-Studio'
 $runtime = Join-Path $package 'runtime'
 New-Item -ItemType Directory -Path $runtime -Force | Out-Null
-foreach ($item in @('app','schemas','scripts','README.md','package.json','Flash Studio.vbs','Flash Studio 24h.vbs','app.ico','install.bat','install.ps1','uninstall.bat')) {
-  Copy-Item -LiteralPath (Join-Path $root $item) -Destination $package -Recurse
+foreach ($item in @('app','schemas','scripts','docs','integrations','README.md','CHANGELOG.md','package.json','Flash Studio.vbs','Flash Studio 24h.vbs','app.ico','install.bat','install.ps1','uninstall.bat')) {
+  $source = Join-Path $root $item
+  $files = if (Test-Path -LiteralPath $source -PathType Container) { Get-ChildItem -LiteralPath $source -File -Recurse } else { Get-Item -LiteralPath $source }
+  foreach ($file in $files) {
+    $relative = $file.FullName.Substring($root.Length + 1)
+    if ($relative -match '(^|[\\/])(__pycache__|node_modules|private|restore-[^\\/]+)([\\/]|$)' -or
+        $file.Name -match '\.(pyc|log|tmp)$' -or
+        $relative -match '^integrations[\\/]minimax-h3[\\/](profile\.json|runtime-snapshot-.*\.json)$') { continue }
+    if ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked files cannot be included in the release.' }
+    $target = Join-Path $package $relative
+    New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+    Copy-Item -LiteralPath $file.FullName -Destination $target
+  }
 }
 $archiveName = 'node-' + $NodeVersion + '-win-x64.zip'
 $archive = Join-Path $work $archiveName
@@ -27,7 +38,8 @@ if (-not $checksumLine) { throw 'Official checksum was not found.' }
 $expected = ($checksumLine.Trim() -split '\s+')[0].ToLowerInvariant()
 $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actual -ne $expected) { throw 'Node.js checksum mismatch. Distribution was not created.' }
-Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $work 'node')
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[IO.Compression.ZipFile]::ExtractToDirectory($archive, (Join-Path $work 'node'))
 $nodeRoot = Join-Path (Join-Path $work 'node') ('node-' + $NodeVersion + '-win-x64')
 Copy-Item -LiteralPath (Join-Path $nodeRoot 'node.exe') -Destination $runtime
 Copy-Item -LiteralPath (Join-Path $nodeRoot 'LICENSE') -Destination $runtime
@@ -35,7 +47,7 @@ Copy-Item -LiteralPath (Join-Path $nodeRoot 'LICENSE') -Destination $runtime
 if (Test-Path -LiteralPath (Join-Path $package 'data')) { throw 'User data was unexpectedly included.' }
 $output = Join-Path $dist 'Flash-Studio-DeepSeek-4.1-Windows-x64.zip'
 if (Test-Path -LiteralPath $output) { throw 'A release ZIP already exists; refusing to overwrite it.' }
-Compress-Archive -LiteralPath $package -DestinationPath $output -CompressionLevel Optimal
+[IO.Compression.ZipFile]::CreateFromDirectory($package, $output, [IO.Compression.CompressionLevel]::Optimal, $true)
 $hash = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()
 ($hash + '  ' + [IO.Path]::GetFileName($output)) | Set-Content -LiteralPath (Join-Path $dist 'SHA256SUMS.txt') -Encoding ascii
 Write-Host ('Release ZIP: ' + $output)

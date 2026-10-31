@@ -49,6 +49,8 @@ function protectedOp(name, args) {
 
 function paidKind(name, args) {
   const n = String(name).split('__').pop().split('/').pop().toLowerCase();
+  if (require('./minimax-h3').billable(n, args)) return 'other'; // VM runtime can incur cloud charges; safe stop remains available.
+  if (/^(grok_|anima_)/.test(n)) return null; // Subscription/local routes never use per-call API billing.
   if (n === 'generate_image') return 'images';
   if (n === 'production_prepare') return /generate|render/i.test(String(args.operation || '')) ? 'video' : null;
   if (/video/.test(n) && /generate|render|create/.test(n)) return 'video';
@@ -168,7 +170,7 @@ class ChatRunner {
   // "/files/images/x.png" → image_url 파트. 공급자의 이미지 픽셀 한도(예: 8192x8192)와 요청 크기 한도에
   // 걸리지 않도록 prepareImageForVision 으로 필요할 때만 줄인다.
   async resultImage(url) {
-    const m = String(url).match(/^\/files\/(images|uploads)\/([A-Za-z0-9._-]+)$/);
+    const m = String(url).match(/^\/files\/(images|uploads|screenings)\/([A-Za-z0-9._-]+)$/);
     if (!m) return null;
     const file = path.join(this.store.dirs[m[1]], m[2]);
     if (!fs.existsSync(file)) return null;
@@ -225,6 +227,8 @@ class ChatRunner {
               // Word·Excel·PowerPoint 는 텍스트로 풀어서 넣는다
               const body = (extra.officeText(this.uploadPath(a)) || '').slice(0, 300000);
               text += `\n\n<attachment name="${a.name}">\n${body}\n</attachment>`;
+            } else if (/\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(a.name)) {
+              text += `\n\n[첨부 영상: ${a.name} (${a.size} B) — inspect_video 도구에 이 이름을 넣으면 실제 시간별 프레임을 모델에 전달합니다. 표본 구간·시각을 근거로 검수하고, 오디오와 표본 사이 연속성은 미확인으로 구분하세요.]`;
             } else if (/\.pdf$/i.test(a.name)) {
               text += `\n\n[첨부 PDF: ${a.name} (${a.size} B) — read_document 도구에 이 파일 이름을 넣으면 페이지를 이미지로 읽을 수 있습니다]`;
             } else {
@@ -248,6 +252,7 @@ class ChatRunner {
   // opts.seen: 같은 도구 결과 중복 제거용 Map (buildHistory 전체에서 공유)
   async appendAssistant(out, parts, opts = {}) {
     const { withReasoning = false, imageFeedback = false, resultCap = 0, keepFullLast = 0, textCap = 0, seen = null } = opts;
+    const pixelParts = new Set(parts.filter(p => p.type === 'image').slice(-8));
     const callIds = parts.filter((p) => p.type === 'tool_call').map((p) => p.id);
     const keepFull = new Set(keepFullLast ? callIds.slice(-keepFullLast) : []);
     let cur = null;
@@ -276,13 +281,15 @@ class ChatRunner {
       for (const c of cur.calls) out.push({ role: 'tool', tool_call_id: c.id, content: resultFor(c) });
       // 비전 모델이면 도구가 만든 이미지를 다시 보여 줘서 결과를 직접 확인하게 한다 (최근 8장, 진행 중인 턴만)
       if (imageFeedback && cur.images.length) {
-        const imgs = (await Promise.all(cur.images.slice(-8).map((u) => this.resultImage(u)))).filter(Boolean);
-        if (imgs.length) out.push({ role: 'user', content: [{ type: 'text', text: `[도구 결과 이미지 ${imgs.length}장 — 결과 확인용으로 자동 첨부됨. 경로: ${cur.images.slice(-8).join(', ')}]` }, ...imgs] });
+        const selected = cur.images.slice(-8);
+        const entries = await Promise.all(selected.map(async p => ({part:p,image:await this.resultImage(p.url)})));
+        const imgs = entries.filter(entry => entry.image).flatMap(({part,image}) => [{type:'text',text:part.prompt ? `[픽셀 입력: ${part.prompt.slice(0,1200)}] ${part.url}` : `[도구 결과 이미지] ${part.url}`},image]);
+        if (imgs.length) out.push({ role: 'user', content: [{ type: 'text', text: `[실제 픽셀 입력 ${imgs.length/2}장 — 최근 최대 8장. 영상 표본은 표시된 시각만 확인하며 오디오·표본 사이 구간은 미확인.]` }, ...imgs] });
       }
       cur = null;
     };
     for (const p of parts) {
-      if (p.type === 'image') { if (cur) cur.images.push(p.url); continue; }
+      if (p.type === 'image') { if (cur && pixelParts.has(p)) cur.images.push(p); continue; }
       // 스티어링: 앞의 도구 결과 뒤에 사용자 메시지로 끼워 넣는다
       if (p.type === 'steer') {
         if (opts.skipPendingSteer && p.delivery === 'pending') continue;
@@ -783,7 +790,7 @@ class ChatRunner {
       else parts.push(type === 'reasoning' ? { type, text: delta, durationMs: null } : { type, text: delta });
       send({ type, delta });
     };
-    const ctx = { settings, store: this.store, skills: this.skills, signal: controller.signal, turnImages, turnAttachments: lastUser.attachments || [], allAttachments: conv.messages.flatMap((m) => [...(m.attachments || []), ...(m.parts || []).flatMap(p => p.type === 'steer' ? p.attachments || [] : [])]), mcp: this.mcp, terminal: this.terminal, meta: { conversationId: conv.id, messageId: asst.id, source: 'app' } };
+    const ctx = { settings, visionAvailable: !!modelDef.vision, store: this.store, skills: this.skills, signal: controller.signal, turnImages, turnAttachments: lastUser.attachments || [], allAttachments: conv.messages.flatMap((m) => [...(m.attachments || []), ...(m.parts || []).flatMap(p => p.type === 'steer' ? p.attachments || [] : [])]), mcp: this.mcp, terminal: this.terminal, meta: { conversationId: conv.id, messageId: asst.id, source: 'app' } };
     run.toolContext = ctx;
     // 대기열 작업: 도구 안에서 여러 번 생성하는 경우(convert_panels) 매번 유료 승인·상한을 확인한다. 막히면 이유 문자열
     if (run.job && this.queue) {
@@ -1194,6 +1201,7 @@ ${r.text}` };
       part.isError = !!r.isError;
       part.status = r.isError ? 'error' : 'done';
       for (const im of r.images || []) { parts.push(im); send({ type: 'image', part: im }); }
+      for (const video of r.videos || []) { parts.push(video); send({ type: 'video', part: video }); }
     } catch (e) {
       part.result = `오류: ${e.message}`;
       if (e.requestId) part.requestId = e.requestId;
@@ -1397,13 +1405,13 @@ ${AFTER}` };
       const chk = this.pollCheck(text, args);
       if (chk.hit) return { text: `이미 끝남 — ${args.contains ? `"${args.contains}" 확인` : `${args.field || 'status'}=${chk.value}`}
 
-${text}`, images: first.images };
+${text}`, images: first.images, videos: first.videos };
       const { wait } = this.bg.add(convId, { tool: name, arguments: toolArgs, field: args.field, until: args.until, contains: args.contains, label: args.label, interval_seconds: args.interval_seconds, timeout_seconds: args.timeout_seconds });
       return { text: `백그라운드 확인에 등록했다 (${wait.label}, 현재 ${wait.field}=${chk.value ?? '?'}). 서버가 토큰 없이 상태를 확인하고, 끝나면 결과가 이 대화에 알림으로 들어온다.
 ${AFTER}
 
 ${text.length > 1500 ? `${text.slice(0, 1500)}
-…` : text}`, images: first.images };
+…` : text}`, images: first.images, videos: first.videos };
     }
 
     const fieldPath = String(args.field || 'status');
@@ -1426,7 +1434,7 @@ ${text.length > 1500 ? `${text.slice(0, 1500)}
       value = contains ? null : pickField(text, fieldPath);
       const hit = contains ? text.includes(contains) : value != null && until.includes(value.toLowerCase());
       const secs = Math.round((Date.now() - t0) / 1000);
-      if (hit) return { text: `끝남 — ${contains ? `"${contains}" 확인` : `${fieldPath}=${value}`} (${n}회 조회, ${secs}초 대기)\n\n${text}`, images: last.images };
+      if (hit) return { text: `끝남 — ${contains ? `"${contains}" 확인` : `${fieldPath}=${value}`} (${n}회 조회, ${secs}초 대기)\n\n${text}`, images: last.images, videos: last.videos };
       if (ctx.signal.aborted) return { text: `중단됨 (${n}회 조회, 마지막 ${fieldPath}=${value ?? '?'})`, isError: true };
       if (run.steer.length) return { text: `사용자가 추가 지시를 보내 기다리기를 멈췄다 (${n}회 조회, ${secs}초, 아직 끝나지 않음 — 마지막 ${fieldPath}=${value ?? '?'}). 추가 지시를 먼저 처리하고, 필요하면 다시 poll_until 로 기다린다.\n\n${text}` };
       if (Date.now() - t0 + interval > timeout) return { text: `시간 초과 — ${Math.round(timeout / 1000)}초 동안 끝나지 않음 (${n}회 조회, 마지막 ${fieldPath}=${value ?? '?'}). 더 기다릴지 판단해 다시 poll_until 을 부르거나 사용자에게 보고한다.\n\n${text}` };

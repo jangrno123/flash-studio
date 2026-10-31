@@ -15,6 +15,11 @@ const fn = (name, description, properties, required = []) => ({
 function definitions(settings, skillCount) {
   const t = settings.tools;
   const defs = [];
+  defs.push(...require('./grok-tools').definitions(settings));
+  defs.push(...require('./anima-local').definitions(settings));
+  defs.push(...require('./media-inspection').definitions(settings));
+  defs.push(...require('./media-utils').definitions(settings));
+  defs.push(...require('./minimax-h3').definitions(settings));
   if (settings.imageGen.enabled) {
     defs.push(fn('generate_image',
       '텍스트 프롬프트로 이미지를 생성해 사용자 화면에 보여준다. 프롬프트는 영어로 구체적으로 쓰는 편이 품질이 좋다. 참조 이미지는 가장 최근 사용자 메시지에 첨부된 이미지만 쓸 수 있고, 이전 메시지의 이미지는 전달되지 않는다. 이전 요청에서 했던 수정(색·스타일 등)을 사용자가 다시 말하지 않았다면 이번 프롬프트에 합치지 않는다.',
@@ -145,7 +150,7 @@ function definitions(settings, skillCount) {
   return defs;
 }
 
-const WRITE_TOOLS = new Set(['write_file', 'run_command', 'copy_files', 'save_skill', 'write_skill_file', 'edit_skill_file']);
+const WRITE_TOOLS = new Set(['write_file', 'run_command', 'copy_files', 'save_skill', 'write_skill_file', 'edit_skill_file', 'media_export']);
 
 function needsApproval(name, settings, mcpHit, args) {
   if (settings.tools.approval === 'auto') return false;
@@ -154,7 +159,7 @@ function needsApproval(name, settings, mcpHit, args) {
     if ((mcpHit.cfg.alwaysAllow || []).includes(mcpHit.tool)) return false;
     return true;
   }
-  return WRITE_TOOLS.has(name) || extra.needsApproval(name, args);
+  return WRITE_TOOLS.has(name) || require('./minimax-h3').mutates(name, args) || extra.needsApproval(name, args);
 }
 
 // mode: 'read' = data 폴더 전체 + 허용 폴더, 'write'/'dest' = data 폴더 전체(+dest 는 허용 폴더도) — 단 앱이 직접 관리하는 파일은 RESERVED 로 막는다
@@ -167,8 +172,8 @@ function allowedRoots(ctx, mode = 'read') {
 }
 
 // data 폴더 바로 아래에서 앱이 직접 검증·저장하는 파일·폴더. 도구가 직접 쓰거나 지우면 앱이 깨질 수 있어 막는다
-const RESERVED = ['settings.json', 'mcp.json', 'prompts.json', 'memory.json', 'decisions.json', 'projects.json', 'routines.json', 'queue.json', 'conversations', 'logs', '.cache', '.app-profile', '.browser-profile'];
-const APP_DIRS = { images: 'images', uploads: 'uploads' };
+const RESERVED = ['settings.json', 'mcp.json', 'prompts.json', 'memory.json', 'decisions.json', 'projects.json', 'routines.json', 'queue.json', 'conversations', 'logs', 'grok', 'anima', 'screening', 'minimax-h3', '.cache', '.app-profile', '.browser-profile'];
+const APP_DIRS = { images: 'images', uploads: 'uploads', videos: 'videos', screenings: 'screenings' };
 const isInside = (full, root) => { const f = full.toLowerCase(), r = root.toLowerCase(); return f === r || f.startsWith(r + path.sep); };
 const isReserved = (full, ctx) => RESERVED.some((name) => isInside(full, path.resolve(ctx.store.data, name)));
 
@@ -178,8 +183,8 @@ function resolvePath(p, ctx, mode = 'read') {
   const ws = path.resolve(ctx.store.dirs.workspace);
   let raw = String(p || '.').trim();
   // "/files/images/..." 같은 앱 경로를 실제 폴더로 바꾼다
-  const m = raw.replace(/\\/g, '/').match(/^\/?files\/(images|uploads)(?:\/(.*))?$/);
-  const full = m ? path.resolve(ctx.store.dirs[APP_DIRS[m[1]]], m[2] || '.') : path.resolve(ws, raw);
+  const m = raw.replace(/\\/g, '/').match(/^\/?files\/(images|uploads|videos|screenings)(?:\/(.*))?$/);
+  const full = m ? path.resolve(ctx.store.dirs[APP_DIRS[m[1]]] || path.join(ctx.store.data,APP_DIRS[m[1]]), m[2] || '.') : path.resolve(ws, raw);
   const roots = allowedRoots(ctx, mode);
   if (!roots.some((r) => isInside(full, r))) throw new Error(`허용되지 않은 경로입니다: ${full}\n허용 폴더: ${roots.join(', ')}`);
   if (mode === 'read' && fs.existsSync(full) && !roots.some(root => isInside(fs.realpathSync(full), fs.existsSync(root) ? fs.realpathSync(root) : root))) throw new Error('허용 폴더 밖을 가리키는 링크입니다');
@@ -383,7 +388,8 @@ function saveGenIndex(ctx) {
 function genKey({ prompt, size, useAttached, references }, ctx) {
   const cfg = ctx.settings.imageGen;
   const h = crypto.createHash('sha1');
-  h.update([cfg.providerId, cfg.model, size || cfg.size, String(prompt).trim()].join('\u0000'));
+  h.update([cfg.engine || 'api', cfg.providerId, cfg.model, size || cfg.size, String(prompt).trim()].join('\u0000'));
+  if (cfg.engine === 'anima-local') h.update(JSON.stringify(ctx.settings.anima || {}));
   for (const d of useAttached ? ctx.turnImages || [] : []) h.update(crypto.createHash('sha1').update(d).digest('hex'));
   for (const ref of references || []) {
     const file = resolveImage(String(ref), ctx);
@@ -409,21 +415,24 @@ function rememberImage(args, urls, requestId, ctx) {
 async function runImage({ prompt, size, useAttached, references, new_variant }, ctx) {
   const hit = cachedImage({ prompt, size, useAttached, references, new_variant }, ctx);
   if (hit) {
-    const out = hit.urls.map((url) => ({ type: 'image', url, prompt, model: ctx.settings.imageGen.model, ...(hit.requestId ? { requestId: hit.requestId } : {}) }));
+    const fallbackModel = ctx.settings.imageGen.engine === 'grok-cli' ? 'Grok CLI · 구독' : ctx.settings.imageGen.engine === 'anima-local' ? 'ANIMA 로컬' : ctx.settings.imageGen.model;
+    const out = hit.urls.map((url, i) => ({ type: 'image', url, prompt, model: hit.models?.[i] || fallbackModel, ...(hit.requestId ? { requestId: hit.requestId } : {}) }));
     out.reused = true;
     return out;
   }
-  const made = await runImageFresh({ prompt, size, useAttached, references }, ctx);
+  const made = await runImageFresh({ prompt, size, useAttached, references, new_variant }, ctx);
   try {
-    loadGenIndex(ctx)[genKey({ prompt, size, useAttached, references }, ctx)] = { urls: made.map((m) => m.url), requestId: made[0] && made[0].requestId, time: Date.now() };
+    loadGenIndex(ctx)[genKey({ prompt, size, useAttached, references }, ctx)] = { urls: made.map((m) => m.url), models: made.map(m => m.model), requestId: made[0] && made[0].requestId, time: Date.now() };
     saveGenIndex(ctx);
   } catch { /* 캐시 실패는 무시 */ }
   return made;
 }
 
-async function runImageFresh({ prompt, size, useAttached, references }, ctx) {
+async function runImageFresh({ prompt, size, useAttached, references, new_variant }, ctx) {
   const cfg = ctx.settings.imageGen;
   if (!cfg.enabled) throw new Error('설정에서 이미지 생성이 꺼져 있습니다');
+  if (cfg.engine === 'grok-cli') return require('./grok-tools').runImage({ prompt, size, useAttached, references, new_variant }, ctx);
+  if (cfg.engine === 'anima-local') return require('./anima-local').runImage({ prompt, size, useAttached, references, new_variant }, ctx);
   const provider = ctx.store.getProvider(cfg.providerId);
   const refs = (useAttached ? ctx.turnImages || [] : []).map(dataUrl => ({ dataUrl }));
   for (const r of references || []) {
@@ -458,6 +467,11 @@ function runShell(command, cwd, signal) {
 
 // 반환: { text, isError, images: [part] }
 async function execute(name, args, ctx) {
+  if (name.startsWith('minimax_h3_')) return require('./minimax-h3').execute(name,args,ctx);
+  if (name.startsWith('grok_')) return require('./grok-tools').execute(name,args,ctx);
+  if (name.startsWith('anima_')) return require('./anima-local').execute(name,args,ctx);
+  if (['inspect_image','inspect_video','inspection_capabilities'].includes(name)) return require('./media-inspection').execute(name,args,ctx);
+  if (['media_info','media_checks','media_export'].includes(name)) return require('./media-utils').execute(name,args,ctx);
   switch (name) {
     case 'generate_image': {
       const references = Array.isArray(args.reference_images) ? args.reference_images.slice(0, 10) : [];
@@ -550,7 +564,7 @@ async function execute(name, args, ctx) {
       const destDir = resolvePath(args.destination, ctx, 'dest');
       fs.mkdirSync(destDir, { recursive: true });
       const move = !!args.move;
-      const protectedRoots = [ctx.store.dirs.images, ctx.store.dirs.uploads].map((d) => path.resolve(d));
+      const protectedRoots = [ctx.store.dirs.images, ctx.store.dirs.uploads, ctx.store.dirs.videos || path.join(ctx.store.data,'videos')].map((d) => path.resolve(d));
       const done = [], missing = [], kept = [];
       for (const spec of Array.isArray(args.sources) ? args.sources : [args.sources]) {
         const files = expandSources(spec, ctx);

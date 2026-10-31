@@ -8,3 +8,6 @@
 *.vbs binary
 *.png binary
 *.ico binary
+# Pinned helpers must have identical bytes on every checkout.
+integrations/minimax-h3/*.ps1 text eol=lf
+integrations/minimax-h3/*.py text eol=lf

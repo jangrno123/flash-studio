@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "media-request.schema.json",
+  "$defs": {
+    "grok": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "prompt"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "image",
+            "video"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "reference_images": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "1:1",
+            "16:9",
+            "9:16",
+            "4:3",
+            "3:4",
+            "3:2",
+            "2:3",
+            "21:9"
+          ]
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "480p",
+            "720p"
+          ]
+        },
+        "duration": {
+          "type": "integer",
+          "enum": [
+            6,
+            10
+          ]
+        },
+        "new_variant": {
+          "type": "boolean"
+        }
+      }
+    },
+    "anima": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt"
+      ],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 6000
+        },
+        "negative_prompt": {
+          "type": "string",
+          "maxLength": 6000
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 720,
+          "maximum": 1536
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 720,
+          "maximum": 1536
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "turbo",
+            "aesthetic"
+          ]
+        },
+        "lora_name": {
+          "type": "string"
+        },
+        "lora_strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "new_variant": {
+          "type": "boolean"
+        },
+        "reference_images": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

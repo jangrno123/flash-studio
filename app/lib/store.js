@@ -58,6 +58,8 @@ class Store {
       conversations: path.join(this.data, 'conversations'),
       uploads: path.join(this.data, 'uploads'),
       images: path.join(this.data, 'images'),
+      videos: path.join(this.data, 'videos'),
+      screenings: path.join(this.data, 'screening', 'frames'),
       skills: path.join(this.data, 'skills'),
       workspace: path.join(this.data, 'workspace'),
       logs: path.join(this.data, 'logs')

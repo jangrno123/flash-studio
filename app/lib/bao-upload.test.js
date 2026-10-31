@@ -22,7 +22,7 @@ test('Flash can verify saved video inputs without changing the graph', async () 
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }), { status: 200 });
   };
   const ctx = { store: { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) } };
   const result = await inspectBaoVideoInputs({ project_id: 'bao', graph_id: 'graph1' }, ctx, fakeFetch);
@@ -47,7 +47,7 @@ test('video input inspection follows edge.order rather than the stored images ar
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }));
   };
   const store = { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   const result = await inspectBaoVideoInputs({ project_id: 'bao', graph_id: 'graph1' }, { store }, fakeFetch);
@@ -75,7 +75,7 @@ test('text updates omit unchanged runtime fields and preserve saved settings by 
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }));
   };
   const store = { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   const result = await setBaoCanvasText({ project_id: 'bao', graph_id: 'graph1', node_id: 'prompt',
@@ -114,7 +114,7 @@ test('Flash wires exact image and text nodes to saved WAN 480p nodes without gen
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }), { status: 200 });
   };
   const ctx = { store: { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) } };
   const args = { project_id: 'bao', graph_id: 'graph1', expected_revision: 7,
@@ -151,7 +151,7 @@ test('two local crops use one MCP ticket batch and transfer both binaries withou
         ? { commandId: 'cmd-1', confirmation: 'EXECUTE cmd-1' }
         : params.name === 'production_execute' ? { status: 'succeeded' }
           : { result: { uploads: ['CUT_A', 'CUT_B'].map((alias) => ({ alias,
-            uploadUrl: 'https://bao-production.jangrno123.chatgpt.site/api/assets/ticket?project=bao', uploadToken: `ticket-${alias}` })) } };
+            uploadUrl: 'https://example.com/api/assets/ticket?project=bao', uploadToken: `ticket-${alias}` })) } };
       return json({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: JSON.stringify(result) }] } });
     }
     return json({ id: `asset-${calls.length}` });
@@ -161,7 +161,7 @@ test('two local crops use one MCP ticket batch and transfer both binaries withou
       { path: '/files/images/cut1.png', alias: 'CUT_A' },
       { path: '/files/images/cut2.png', alias: 'CUT_B' }
     ] }, { store: { dirs: { images, uploads: images }, getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-      url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+      url: 'https://example.com/api/lightbringer-mcp',
       headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
     } } }) } }, fakeFetch);
     assert.equal(calls.length, 5);
@@ -195,14 +195,14 @@ test('direct canvas upload transfers media then patches exact graph revision and
     if (request.name === 'production_prepare') value = { commandId: request.arguments.operation === 'canvas.patch' ? 'patch-command' : 'upload-command', confirmation: 'confirm' };
     else if (request.name === 'production_execute') value = { status: 'succeeded' };
     else value = { result: { uploads: ['ONE', 'TWO'].map((alias) => ({ alias,
-      uploadUrl: 'https://bao-production.jangrno123.chatgpt.site/api/assets/ticket?project=bao', uploadToken: `token-${alias}` })) } };
+      uploadUrl: 'https://example.com/api/assets/ticket?project=bao', uploadToken: `token-${alias}` })) } };
     return json({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } });
   };
   try {
     const result = await uploadBaoToCanvas({ project_id: 'bao', graph_id: 'graph-one', base_revision: 7,
       images: [{ path: '/files/images/one.png', alias: 'ONE' }, { path: '/files/images/two.png', alias: 'TWO' }] },
     { store: { dirs: { images, uploads: images }, getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-      url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+      url: 'https://example.com/api/lightbringer-mcp',
       headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
     } } }) } }, fakeFetch);
     assert.equal(result.isError, undefined);
@@ -224,7 +224,7 @@ test('direct canvas patch uses exact kind/nodeId with one durable BAO command', 
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }), { status: 200 });
   };
   const store = { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   const changes = [{ kind: 'update_node', nodeId: 'pro-1', position: { x: 560, y: 120 } },
@@ -249,7 +249,7 @@ test('direct canvas patch normalizes text node config without dropping authored 
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(result) }] } }), { status: 200 });
   };
   const store = { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   const change = { kind: 'add_node', node: { id: 'prompt-1', type: 'text.input', position: { x: 1000, y: 120 } },
@@ -288,7 +288,7 @@ test('media binding repair keeps existing asset IDs and uses bounded CAS patches
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }), { status: 200 });
   };
   const store = { getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   const result = await repairBaoCanvasBindings({ project_id: 'bao', graph_id: 'graph-one', expected_image_count: 21 }, { store }, fakeFetch);
@@ -310,7 +310,7 @@ test('webtoon upload sends exact local bytes to cloud source and crop routes', a
     return new Response(JSON.stringify({ source: { id: 'source-1' }, reused: false }), { status: 201 });
   };
   const store = { dirs: { images, uploads: images }, getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   try {
@@ -347,11 +347,11 @@ test('general asset upload transfers MP3 and JSON through existing tickets', asy
       value = { commandId: 'cmd', confirmation: 'confirm' };
     } else if (request.name === 'production_execute') value = { status: 'succeeded' };
     else value = { result: { uploads: files.map((file) => ({ alias: file.alias,
-      uploadUrl: 'https://bao-production.jangrno123.chatgpt.site/api/assets/ticket?project=bao', uploadToken: 'ticket' })) } };
+      uploadUrl: 'https://example.com/api/assets/ticket?project=bao', uploadToken: 'ticket' })) } };
     return new Response(JSON.stringify({ result: { content: [{ type: 'text', text: JSON.stringify(value) }] } }), { status: 200 });
   };
   const store = { dirs: { images, uploads: images }, getMcpConfig: () => ({ mcpServers: { 'bao-production': {
-    url: 'https://bao-production.jangrno123.chatgpt.site/api/lightbringer-mcp',
+    url: 'https://example.com/api/lightbringer-mcp',
     headers: { Authorization: 'Bearer test', 'OAI-Sites-Authorization': 'test-sites' }
   } } }) };
   try {

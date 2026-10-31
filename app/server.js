@@ -25,7 +25,7 @@ const { readBody } = require('./lib/http-body');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(__dirname, 'public');
-const VERSION = '1.0.1';
+const VERSION = require('../package.json').version;
 
 const registry = new SchemaRegistry(path.join(ROOT, 'schemas'));
 const store = new Store(ROOT, registry);
@@ -34,6 +34,8 @@ const mcp = new McpManager();
 const skills = new SkillLibrary(store.dirs.skills, registry);
 const browser = new WorkBrowser(path.join(store.data, '.browser-profile'));
 const terminal = new Terminal(store.dirs.workspace);
+const grokMedia = require('./lib/grok-media').getGrok(store);
+const animaLocal = require('./lib/anima-local').getAnima(store);
 const runner = new ChatRunner({ store, mcp, skills, browser, terminal });
 const queue = new JobQueue({ store, runner });
 runner.queue = queue;
@@ -49,6 +51,8 @@ rescanSkills();
 
 // ---------------- 유틸 ----------------
 const MIME = {
+  '.wav':'audio/wav', '.mp3':'audio/mpeg', '.m4a':'audio/mp4', '.flac':'audio/flac', '.ogg':'audio/ogg',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8',
@@ -68,9 +72,16 @@ async function readJson(req) {
   try { return JSON.parse(buf.toString('utf8')); } catch { throw httpErr(400, 'JSON 형식이 아닙니다'); }
 }
 
-function serveFile(res, file, extraHeaders = {}) {
+function serveFile(res, file, extraHeaders = {}, req = null) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); res.end('Not found'); return; }
+    if (req?.headers.range && /\.(mp4|webm|mov)$/i.test(file)) {
+      const match=req.headers.range.match(/^bytes=(\d*)-(\d*)$/);
+      let start=match?.[1]?Number(match[1]):0, end=match?.[2]?Number(match[2]):st.size-1;
+      if(match&&!match[1]&&match[2]){start=Math.max(0,st.size-Number(match[2]));end=st.size-1;}
+      if(!match||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||start>=st.size){res.writeHead(416,{'content-range':`bytes */${st.size}`});res.end();return;}
+      end=Math.min(end,st.size-1);res.writeHead(206,{'content-type':MIME[path.extname(file).toLowerCase()]||'application/octet-stream','content-length':end-start+1,'content-range':`bytes ${start}-${end}/${st.size}`,'accept-ranges':'bytes',...extraHeaders});fs.createReadStream(file,{start,end}).pipe(res);return;
+    }
     res.writeHead(200, { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': st.size, ...extraHeaders });
     fs.createReadStream(file).pipe(res);
   });
@@ -137,7 +148,7 @@ let byeTimer = null;
 route('GET', '/api/ping', () => ({ ok: true, app: 'flash-studio', version: VERSION, pollPolicyRevision:'editor-export-envelope-20261006', handoffPolicyRevision:'checkpoint-resume-20261006', editorServicesRevision:'local-worker-control-20261006', activeRuns:runner.activeCount() }));
 route('POST', '/api/bye', () => {
   clearTimeout(byeTimer);
-  if (process.env.FLASH_IDLE_EXIT === '1') byeTimer = setTimeout(() => { if (Date.now() - lastSeen > 12000 && !runner.activeCount() && !scheduler.keepsAlive() && !queue.keepsAlive() && !watcher.keepsAlive() && !bgwaits.keepsAlive()) shutdown('창 닫힘'); }, 15000);
+  if (process.env.FLASH_IDLE_EXIT === '1') byeTimer = setTimeout(() => { if (Date.now() - lastSeen > 12000 && !runner.activeCount() && !scheduler.keepsAlive() && !queue.keepsAlive() && !watcher.keepsAlive() && !bgwaits.keepsAlive() && !grokMedia.keepsAlive() && !animaLocal.keepsAlive()) shutdown('창 닫힘'); }, 15000);
   return { ok: true };
 });
 
@@ -645,6 +656,21 @@ route('GET', '/api/requests', (req) => {
 // 이미지 목록
 route('GET', '/api/images', () => fs.readdirSync(store.dirs.images).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).sort().reverse().slice(0, 300).map((f) => `/files/images/${f}`));
 
+// Grok subscription CLI and local ANIMA: no external generation API fallback.
+route('GET','/api/grok/status',()=>grokMedia.status());
+route('POST','/api/grok/connect',()=>grokMedia.status(true));
+route('POST','/api/grok/login',()=>grokMedia.login());
+route('GET','/api/grok/jobs',()=>grokMedia.list());
+route('POST','/api/grok/jobs',async req=>grokMedia.start(await readJson(req)));
+route('GET','/api/grok/jobs/:id',(req,p)=>grokMedia.get(p.id));
+route('POST','/api/grok/jobs/:id/cancel',(req,p)=>grokMedia.cancel(p.id));
+route('GET','/api/anima/status',()=>animaLocal.status());
+route('POST','/api/anima/start',()=>animaLocal.startEngine());
+route('GET','/api/anima/jobs',()=>animaLocal.list());
+route('POST','/api/anima/jobs',async req=>animaLocal.start(await readJson(req)));
+route('GET','/api/anima/jobs/:id',(req,p)=>animaLocal.get(p.id));
+route('POST','/api/anima/jobs/:id/cancel',(req,p)=>animaLocal.cancel(p.id));
+
 // 프롬프트
 route('GET', '/api/prompts', () => store.getPrompts().prompts);
 route('POST', '/api/prompts', async (req) => {
@@ -778,10 +804,10 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith('/files/')) {
     const [, , kind, ...rest] = pathname.split('/');
-    const dir = { uploads: store.dirs.uploads, images: store.dirs.images }[kind];
+    const dir = { uploads: store.dirs.uploads, images: store.dirs.images, videos: grokMedia.videosDir, screenings: store.dirs.screenings }[kind];
     const name = path.basename(rest.join('/'));
     if (!dir || !/^[A-Za-z0-9._-]+$/.test(name)) { res.writeHead(404); res.end(); return; }
-    serveFile(res, path.join(dir, name), { 'cache-control': 'private, max-age=31536000', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'" });
+    serveFile(res, path.join(dir, name), { 'cache-control': 'private, max-age=31536000', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'" }, req);
     return;
   }
 
@@ -798,6 +824,7 @@ async function shutdown(reason) {
   console.log(`[flash] 종료: ${reason}`);
   try { await mcp.stopAll(); } catch { /* 무시 */ }
   try { browser.close(); } catch { /* 무시 */ }
+  try { grokMedia.close(); animaLocal.close(); } catch { /* Ignore shutdown-only errors. */ }
   try { queue.awake.set(false); } catch { /* 무시 */ }
   setTimeout(() => process.exit(0), 300);
 }
@@ -814,6 +841,7 @@ server.listen(port, '127.0.0.1', async () => {
   watcher.start();
   bgwaits.start();
   console.log(`[flash] Flash Studio ${VERSION} — http://127.0.0.1:${port}  (${new Date().toLocaleString('ko-KR')})`);
+  if (grokMedia.config().enabled) grokMedia.status(true).catch(e => console.error('[flash] Grok 연결:', e.message));
   try { await mcp.load(store.getMcpConfig()); } catch (e) { console.error('[flash] MCP 설정 오류:', e.message); }
   const st = mcp.status();
   if (st.length) console.log(`[flash] MCP: ${st.map((s) => `${s.name}=${s.status}`).join(', ')}`);
@@ -827,7 +855,7 @@ server.on('error', (e) => {
 if (process.env.FLASH_IDLE_EXIT === '1') {
   setInterval(() => {
     const idle = (Date.now() - lastSeen) / 1000;
-    if (idle > store.getSettings().server.idleExitSeconds && !runner.activeCount() && !scheduler.keepsAlive() && !queue.keepsAlive() && !watcher.keepsAlive() && !bgwaits.keepsAlive()) shutdown(`유휴 ${Math.round(idle)}초`);
+    if (idle > store.getSettings().server.idleExitSeconds && !runner.activeCount() && !scheduler.keepsAlive() && !queue.keepsAlive() && !watcher.keepsAlive() && !bgwaits.keepsAlive() && !grokMedia.keepsAlive() && !animaLocal.keepsAlive()) shutdown(`유휴 ${Math.round(idle)}초`);
   }, 15000);
 }
 

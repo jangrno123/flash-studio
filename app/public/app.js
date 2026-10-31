@@ -200,7 +200,7 @@ function parseHash() {
   const p = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   if (p[0] === 'c' && p[1]) return { view: 'chat', id: p[1] };
   if (p[0] === 'p' && p[1]) return { view: 'project', id: p[1] };
-  if (['prompts', 'skills', 'mcp', 'images', 'requests', 'projects', 'archive', 'routines', 'queue'].includes(p[0])) return { view: p[0], id: p[1] || null };
+  if (['prompts', 'skills', 'mcp', 'images', 'media', 'requests', 'projects', 'archive', 'routines', 'queue'].includes(p[0])) return { view: p[0], id: p[1] || null };
   return { view: 'chat', id: null };
 }
 
@@ -306,6 +306,7 @@ function renderSidebar() {
       nav('skill', '스킬', '#/skills', r.view === 'skills', h('span', { class: 'count' }, S.skills.length)),
       nav('plug', 'MCP 커넥터', '#/mcp', r.view === 'mcp', h('span', { class: 'count' }, `${connected}/${S.mcp.length}`)),
       nav('image', '이미지 갤러리', '#/images', r.view === 'images'),
+      nav('bolt', 'Grok · ANIMA 제작', '#/media', r.view === 'media'),
       nav('hash', '요청 기록', '#/requests', r.view === 'requests')),
     h('div', { class: 'sb-search' }, icon('search'), search),
     list,
@@ -382,6 +383,10 @@ function renderMain() {
   if (v === 'skills') return S.route.id ? renderSkillDetail(S.route.id) : renderSkills();
   if (v === 'mcp') return renderMcp();
   if (v === 'images') return renderImages();
+  if (v === 'media') {
+    if (document.querySelector('#main .media-studio')) return; // Sidebar toggles must preserve the form and playing media.
+    return window.FlashMedia.render(document.getElementById('main'));
+  }
   if (v === 'requests') return renderRequests();
   if (v === 'projects') return renderProjects();
   if (v === 'project') return renderProject(S.route.id);
@@ -767,6 +772,7 @@ function groupParts(parts) {
 }
 
 function blockSig(b, live) {
+  if (b.type === 'video') return `v${b.url}`;
   if (b.type === 'gallery') return `g${b.items.length}`;
   if (b.type === 'steer') return `s${b.id || ''}${b.delivery || ''}${b.text.length}${(b.attachments || []).map(a => a.id).join(',')}`;
   if (b.type === 'tool_call') return `c${b.id}${b.status}${b.deadline ? 'd' : ''}${(b.result || '').length}`;
@@ -774,6 +780,7 @@ function blockSig(b, live) {
 }
 
 function renderBlock(b, m, idx, live) {
+  if (b.type === 'video') return h('div', {class:'media-video-block'},h('video',{src:b.url,controls:true,preload:'metadata',style:{width:'100%',maxHeight:'560px'},'aria-label':b.prompt||'생성 영상'}),h('div',{class:'muted'},b.model||'생성 영상'),h('a',{href:b.url,download:'',class:'btn sm'},'영상 저장'));
   if (b.type === 'text') {
     return h('div', { class: 'md', html: Markdown.render(b.text) });
   }
@@ -1238,6 +1245,7 @@ function onEvent(ev, conv, optimistic) {
     }
     case 'tool_call': msg.parts.push(ev.part); sideAutoOpen(ev.part, run); break;
     case 'image': msg.parts.push(ev.part); break;
+    case 'video': msg.parts.push(ev.part); break;
     case 'tool_status': {
       const p = msg.parts.find((x) => x.type === 'tool_call' && x.id === ev.id);
       if (p) Object.assign(p, { status: ev.status }, ev.result !== undefined ? { result: ev.result } : {}, ev.isError !== undefined ? { isError: ev.isError } : {}, ev.durationMs !== undefined ? { durationMs: ev.durationMs } : {}, ev.deadline !== undefined ? { deadline: ev.deadline, shownAt: Date.now() } : {});
@@ -2033,7 +2041,8 @@ async function openSettings(tab = 'general') {
       ];
     } else if (current === 'image') {
       content = [
-        h('p', { class: 'page-desc' }, 'Seedream 같은 이미지 모델을 /images/generations 엔드포인트로 호출해요. 모델이 generate_image 도구로 쓰거나, 입력창의 "이미지" 모드로 바로 만들 수 있어요.'),
+        h('p', { class: 'page-desc' }, '이미지 버튼과 generate_image 도구에서 사용할 생성 엔진입니다. Grok은 구독 로그인, ANIMA는 로컬 모델을 사용합니다. API 공급자 설정은 API 엔진을 선택할 때만 사용합니다.'),
+        field('생성 엔진', sel(ig, 'engine', [['grok-cli','Grok 구독'],['anima-local','ANIMA 로컬 · 텍스트→이미지'],['api','기존 API 공급자']])),
         sw(ig, 'enabled', '이미지 생성 사용'),
         field('공급자', sel(ig, 'providerId', draft.providers.map((p) => [p.id, p.name]))),
         imageModelPicker(ig),

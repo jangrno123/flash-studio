@@ -105,7 +105,10 @@
           "description": "원문 누적 전환 기준에 닿으면 인계서를 대조 저장하고 새 대화로 전환·자동 재개"
         },
         "handoffAtTokens": {
-          "type": "integer", "minimum": 100000, "maximum": 20000000, "default": 3000000,
+          "type": "integer",
+          "minimum": 100000,
+          "maximum": 20000000,
+          "default": 3000000,
           "description": "원문 누적 토큰 추정 기준. 공급자 반복 입력 과금 합계나 한 번의 요청 크기와 별개"
         }
       }
@@ -115,6 +118,15 @@
       "additionalProperties": false,
       "default": {},
       "properties": {
+        "engine": {
+          "type": "string",
+          "enum": [
+            "api",
+            "grok-cli",
+            "anima-local"
+          ],
+          "default": "api"
+        },
         "enabled": {
           "type": "boolean",
           "default": true
@@ -365,6 +377,69 @@
           "maximum": 6,
           "default": 3,
           "description": "동시에 처리할 컷 수"
+        }
+      }
+    },
+    "grok": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "mode": {
+          "type": "string",
+          "const": "subscription",
+          "default": "subscription"
+        },
+        "cliPath": {
+          "type": "string",
+          "default": ""
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 3600,
+          "default": 900
+        }
+      }
+    },
+    "anima": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "root": {
+          "type": "string",
+          "default": "D:/AnimaStudio"
+        },
+        "apiUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:17861"
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "turbo",
+            "aesthetic"
+          ],
+          "default": "turbo"
+        },
+        "lora": {
+          "type": "string",
+          "default": ""
+        },
+        "loraStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.8
         }
       }
     }

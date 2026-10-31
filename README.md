@@ -2,6 +2,8 @@
 
 내 PC에 설치해서 쓰는 LLM 채팅 스튜디오입니다. **공개 배포판의 기본 모델은 DeepSeek 공식 API의 V4.1 Flash (1017)**입니다. BytePlus ModelArk를 포함해 OpenAI 호환 API라면 다른 공급자도 연결할 수 있습니다. 외부 패키지 없이 Node.js 하나로 돌아갑니다.
 
+**v1.1.0**에는 Grok 구독 이미지·영상, ANIMA 로컬 이미지·LoRA, 실제 픽셀을 전달하는 이미지·영상 검수, 압축 파일 처리, 미디어 검사·내보내기, 기존 MiniMax H3 서버 관리 도구가 추가됐습니다. 선택 기능의 설치·연결 방법은 [미디어 설정 안내](docs/MEDIA_SETUP.md), 변경 내용은 [CHANGELOG](CHANGELOG.md)를 참고하세요. 외부 CLI·Python·FFmpeg·모델 파일은 선택 기능별로 별도 준비합니다.
+
 ## 직원용 다운로드 (Windows x64)
 
 1. [최신 배포 파일](https://github.com/jangrno123/flash-studio/releases/latest)에서 **Flash-Studio-DeepSeek-4.1-Windows-x64.zip**을 내려받습니다. 공개 저장소이므로 GitHub 로그인이나 초대가 필요 없습니다.
@@ -16,6 +18,7 @@
 - 회사 BytePlus 키를 쓰려면 공급자 `BytePlus ModelArk`를 선택하고 `ARK_API_KEY` 환경변수 또는 앱 설정에 키를 입력합니다. 회사가 별도로 안내한 4.1 엔드포인트 ID를 모델에 등록하고 선택하세요. 회사 엔드포인트 ID와 키는 공개 배포하지 않습니다.
 - **DeepSeek 공식 API 키**를 쓰려면 공급자 `DeepSeek 공식`, 모델 `DeepSeek V4.1 Flash (1017)`을 선택하고 `DEEPSEEK_API_KEY`를 등록합니다. 공식 호출 ID는 `deepseek-flash`입니다. [공식 모델 안내](https://api-docs.deepseek.com/en/)
 - 이미지 생성(Seedream)은 BytePlus 키가 필요합니다. DeepSeek 공식 키만 등록한 경우 이미지 공급자의 키도 별도로 입력해야 합니다.
+- Grok 구독과 ANIMA 로컬 생성은 별도 엔진입니다. Grok은 직원 본인의 CLI 구독 로그인, ANIMA는 기존 로컬 서버가 필요하며 Seedream API로 자동 전환하지 않습니다.
 - BAO 및 다른 MCP 서비스는 각 직원에게 허용된 주소와 인증 정보를 MCP 화면에서 따로 등록합니다. 기존 사용자의 MCP 인증 파일은 복사하지 않습니다.
 - 외부 MCP 도구가 `npx`, `python`, `uvx`를 요구하면 해당 런타임은 별도 설치합니다. 앱 자체와 기본 echo 테스트에는 추가 패키지가 필요 없습니다.
 
@@ -46,6 +49,8 @@ DeepSeek 공식 V4.1 Flash의 호출 ID는 **deepseek-flash**입니다. ModelArk
 ## 개발 및 배포
 
 `npm test` 또는 `node scripts/test.cjs`로 로컬 회귀 검사를 실행합니다. 포터블 ZIP에서는 `runtime\node.exe scripts\test.cjs`를 사용합니다. `npm start`는 소스 실행용입니다. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1`은 공식 Node.js 배포 파일의 SHA-256을 확인하고 개인 데이터가 없는 Windows x64 ZIP을 `dist`에 만듭니다. 런타임의 라이선스는 배포 ZIP의 `runtime/LICENSE`에 있습니다.
+
+압축 처리 회귀 검사는 `python -m unittest discover -s app/lib -p test_archive_io.py`로 실행합니다. 영상 회귀 검사에는 PATH의 `ffmpeg`·`ffprobe`가 필요합니다. 배포 ZIP 생성은 .NET ZIP 기능을 사용하며 PowerShell Archive 모듈에 의존하지 않습니다.
 
 ## 기능
 

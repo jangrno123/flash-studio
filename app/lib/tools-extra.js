@@ -46,8 +46,10 @@ function definitions(settings) {
       { path: { type: 'string', description: '문서 경로 또는 첨부 파일 이름' }, first_page: { type: 'integer', description: 'PDF 시작 쪽 (기본 1)' }, pages: { type: 'integer', description: 'PDF 쪽 수 (기본 4, 최대 8)' }, sheet: { type: 'string', description: 'Excel 시트 이름 (생략하면 전부)' } }, ['path']));
     defs.push(fn('zip_files', '파일·폴더를 zip 으로 묶는다.',
       { sources: { type: 'array', items: { type: 'string' } }, destination: { type: 'string', description: '만들 zip 경로 (예: "납품/컷모음.zip")' } }, ['sources', 'destination']));
-    defs.push(fn('unzip_file', 'zip 을 폴더에 푼다.',
-      { path: { type: 'string' }, destination: { type: 'string' } }, ['path', 'destination']));
+    defs.push(fn('list_archive', 'ZIP·TAR·TGZ 등 압축 안의 파일 이름·크기·종류를 해제 없이 읽는다. PowerShell Archive 모듈을 사용하지 않는다. 큰 압축은 offset/max_results로 나눠 읽고 필요한 members만 해제한다.',
+      {path:{type:'string'},offset:{type:'integer',minimum:0},max_results:{type:'integer',minimum:1,maximum:200}},['path']));
+    defs.push(fn('unzip_file', 'ZIP·TAR·TGZ 압축을 허용된 로컬 폴더에 푼다. 모듈 설치가 필요 없다. members를 주면 그 파일만 해제한다. 기존 다른 파일은 덮어쓰지 않고, 동일한 ZIP 파일은 재사용한다. 해제한 이미지·영상은 inspect_image/inspect_video로 읽는다.',
+      { path: { type: 'string' }, destination: { type: 'string' },members:{type:'array',items:{type:'string'}} }, ['path', 'destination']));
   }
   if (t.enableWeb) {
     defs.push(fn('web_search', '웹 검색 결과(제목·주소·요약)를 돌려준다. 자세한 내용은 fetch_url 로 연다.',
@@ -488,23 +490,12 @@ async function execute(name, args, ctx) {
       return { text: `# ${path.basename(f)}\n\n${text.length > limit ? `${text.slice(0, limit)}\n…(${text.length.toLocaleString()}자 중 앞부분만)` : text}` };
     }
     case 'zip_files': {
-      const srcs = [];
-      for (const s of args.sources || []) srcs.push(...expandSources(s, ctx));
-      if (!srcs.length) throw new Error('묶을 파일을 찾지 못했습니다');
-      let dest = resolvePath(args.destination, ctx, 'dest');
-      if (!/\.zip$/i.test(dest)) dest += '.zip';
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      await runPsCommand(`Compress-Archive -Force -LiteralPath @(${srcs.map(psq).join(',')}) -DestinationPath ${psq(dest)}`, 600000);
-      return { text: `zip 을 만들었습니다: ${dest} (${fs.statSync(dest).size.toLocaleString()} B, 항목 ${srcs.length}개)` };
+      return require('./archives').execute(name,args,ctx);
     }
     case 'unzip_file': {
-      const src = expandSources(args.path, ctx)[0];
-      if (!src) throw new Error(`zip 을 찾을 수 없습니다: ${args.path}`);
-      const dest = resolvePath(args.destination, ctx, 'dest');
-      fs.mkdirSync(dest, { recursive: true });
-      await runPsCommand(`Expand-Archive -Force -LiteralPath ${psq(src)} -DestinationPath ${psq(dest)}`, 600000);
-      return { text: `풀었습니다: ${src} → ${dest}` };
+      return require('./archives').execute(name,args,ctx);
     }
+    case 'list_archive': return require('./archives').execute(name,args,ctx);
     case 'web_search': {
       const n = Math.min(Number(args.max_results) || 8, 20);
       const signal = AbortSignal.any([AbortSignal.timeout(20000), ...(ctx.signal ? [ctx.signal] : [])]);

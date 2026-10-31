@@ -1,11 +1,13 @@
 {
   "name": "flash-studio",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "description": "Flash Studio employee distribution with DeepSeek V4.1 Flash",
   "scripts": {
     "start": "node app/server.js",
     "test": "node scripts/test.cjs"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

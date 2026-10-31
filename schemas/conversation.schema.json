@@ -147,27 +147,62 @@
             "stopped"
           ]
         },
-        "autoResume": { "type": "boolean", "default": false },
-        "resumeMessageId": { "type": "string" },
+        "autoResume": {
+          "type": "boolean",
+          "default": false
+        },
+        "resumeMessageId": {
+          "type": "string"
+        },
         "resumeOptions": {
-          "type": "object", "additionalProperties": false,
+          "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "tools": { "type": "boolean" },
-            "thinking": { "type": "boolean" },
-            "providerId": { "type": "string" },
-            "model": { "type": "string" }
+            "tools": {
+              "type": "boolean"
+            },
+            "thinking": {
+              "type": "boolean"
+            },
+            "providerId": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            }
           }
         },
-        "recoveryCount": { "type": "integer", "minimum": 0 },
-        "sourceSummaryHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "recoveryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceSummaryHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "sourceSnapshots": {
-          "type": "array", "maxItems": 200,
-          "items": { "type": "object", "additionalProperties": false,
-            "required": ["conversationId", "messageCount", "sha256"],
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "conversationId",
+              "messageCount",
+              "sha256"
+            ],
             "properties": {
-              "conversationId": { "type": "string" },
-              "messageCount": { "type": "integer", "minimum": 0 },
-              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              "conversationId": {
+                "type": "string"
+              },
+              "messageCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
             }
           }
         },
@@ -650,6 +685,31 @@
             },
             "immediate": {
               "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "url"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "video"
+            },
+            "url": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "requestId": {
+              "type": "string"
             }
           }
         }

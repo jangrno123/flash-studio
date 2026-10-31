@@ -315,7 +315,11 @@
           "type": "integer"
         },
         "reason": {
-          "enum": ["limit", "network", "server"]
+          "enum": [
+            "limit",
+            "network",
+            "server"
+          ]
         },
         "requestId": {
           "type": [
@@ -449,6 +453,21 @@
         },
         "reason": {
           "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "part"
+      ],
+      "properties": {
+        "type": {
+          "const": "video"
+        },
+        "part": {
+          "$ref": "conversation.schema.json#/$defs/part"
         }
       }
     }
